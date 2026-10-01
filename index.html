@@ -1,0 +1,393 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-title" content="食材メモ" />
+  <title>食材メモ</title>
+  <style>
+    :root { --bg:#f4f1ea; --card:#fffdf8; --ink:#2c2a26; --muted:#6f6a62; --line:#e4ddd2; --accent:#3d6b4f; --accent-soft:#e7f0ea; --danger:#b5453a; --warn:#c07a22; --ok:#4a6b52; --frozen:#3d5a73; --today:#eef5ef; }
+    * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+    html,body { margin:0; background:var(--bg); color:var(--ink); font-family:"Hiragino Sans","Hiragino Kaku Gothic ProN","Noto Sans JP",sans-serif; }
+    body { min-height:100dvh; padding:calc(12px + env(safe-area-inset-top)) 14px calc(28px + env(safe-area-inset-bottom)); }
+    header { display:flex; align-items:baseline; justify-content:space-between; margin-bottom:10px; }
+    h1 { font-size:1.25rem; margin:0; } h2 { font-size:1rem; margin:0; }
+    .count { color:var(--muted); font-size:.85rem; }
+    .actions { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:14px; }
+    .actions.right { display:flex; justify-content:flex-end; }
+    .actions.right button { min-width:42%; }
+    button,select,input,textarea { font:inherit; }
+    button { border:0; border-radius:14px; padding:12px 10px; background:var(--accent); color:#fff; font-weight:600; }
+    button.secondary { background:var(--accent-soft); color:var(--accent); }
+    button.danger { background:#f6e8e6; color:var(--danger); }
+    button.small { padding:7px 11px; font-size:.8rem; }
+    button.tab { background:#efe8dc; color:var(--muted); padding:8px 8px; }
+    button.tab.on { background:var(--accent-soft); color:var(--accent); }
+    .tabs { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin:0 0 12px; }
+    .tabs.three { grid-template-columns:1fr 1fr 1fr; }
+    .card { background:var(--card); border:1px solid var(--line); border-radius:18px; padding:14px; margin-bottom:12px; }
+    .plan-head,.list-head { display:flex; align-items:baseline; justify-content:space-between; gap:8px; }
+    .list-head { margin-bottom:10px; }
+    .list-head select { width:auto; min-width:10.5em; padding:7px 10px; font-size:.85rem; }
+    .sec { border-radius:14px; padding:10px; margin-top:10px; }
+    .sec:first-child { margin-top:0; }
+    .sec.fridge { background:#f3f7f1; border:1px solid #d7e4d6; }
+    .sec.freezer { background:#eef3f7; border:1px solid #d3dee8; }
+    .sec-title { display:flex; align-items:center; justify-content:space-between; font-size:.86rem; font-weight:700; margin:0 0 4px; }
+    .sec.fridge .sec-title { color:var(--ok); }
+    .sec.freezer .sec-title { color:var(--frozen); }
+    .sec-title button { background:transparent; color:inherit; padding:4px 0; font-size:.8rem; }
+    label { display:block; font-size:.78rem; color:var(--muted); margin:10px 0 4px; }
+    label:first-child { margin-top:0; }
+    input[type=text],input[type=number],input[type=date],select,textarea { width:100%; border:1px solid var(--line); background:#fff; border-radius:12px; padding:11px 12px; }
+    textarea { min-height:44px; resize:vertical; }
+    .row { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+    .add-row { display:grid; grid-template-columns:1fr auto; gap:8px; margin-bottom:10px; }
+    .toggle { display:flex; align-items:center; gap:10px; margin-top:12px; padding:10px 12px; background:#eef3f7; border-radius:12px; color:var(--frozen); font-weight:600; }
+    .toggle.plain { background:#f3eee6; color:var(--ink); }
+    .toggle input { width:22px; height:22px; }
+    .hint { color:var(--muted); font-size:.8rem; margin:8px 0 0; }
+    .item { padding:12px 0; border-top:1px solid rgba(0,0,0,.08); }
+    .item:first-child { border-top:0; padding-top:4px; }
+    .name { font-weight:700; }
+    .meta { color:var(--muted); font-size:.86rem; margin-top:2px; }
+    .expired,.d3 { color:var(--danger); } .d7 { color:var(--warn); } .ok { color:var(--ok); } .none { color:var(--muted); }
+    .item-btns { display:flex; flex-wrap:wrap; gap:6px; margin-top:8px; }
+    .empty { color:var(--muted); text-align:center; padding:18px 8px; }
+    .week-day { border-top:1px solid var(--line); padding:10px 0; }
+    .week-day:first-child { border-top:0; padding-top:0; }
+    .week-day.today { background:var(--today); margin:0 -8px; padding:10px 8px; border-radius:12px; border-top:0; }
+    .week-head { display:flex; justify-content:space-between; margin-bottom:6px; font-weight:700; }
+    .week-head span { font-size:.75rem; color:var(--muted); font-weight:500; }
+    .meal-label { font-size:.75rem; color:var(--muted); margin:6px 0 3px; }
+    .memo-item { display:grid; grid-template-columns:auto 1fr auto; gap:10px; align-items:center; padding:10px 0; border-top:1px solid var(--line); }
+    .memo-item:first-child { border-top:0; }
+    .memo-item input[type=checkbox] { width:22px; height:22px; }
+    .memo-item.done .memo-text { color:var(--muted); text-decoration:line-through; }
+    .toast-wrap { position:fixed; left:50%; bottom:calc(18px + env(safe-area-inset-bottom)); transform:translateX(-50%); z-index:30; display:none; gap:8px; align-items:center; background:#2c2a26; color:#fff; padding:8px 8px 8px 14px; border-radius:999px; }
+    .toast-wrap.show { display:flex; }
+    .toast-wrap button { background:#fff; color:#2c2a26; padding:7px 12px; border-radius:999px; font-size:.8rem; }
+    dialog { border:0; border-radius:18px; padding:0; width:min(92vw,420px); background:var(--card); }
+    dialog::backdrop { background:rgba(0,0,0,.35); }
+    .dialog-body { padding:16px; }
+  </style>
+</head>
+<body>
+  <header><h1>食材メモ</h1><div class="count" id="count"></div></header>
+  <div class="tabs three">
+    <button class="tab on" id="paneFood" type="button">食材</button>
+    <button class="tab" id="panePlan" type="button">献立</button>
+    <button class="tab" id="paneMemo" type="button">メモ</button>
+  </div>
+  <div class="actions right">
+    <button id="addBtn" type="button">追加する</button>
+    <button id="copyAllBtn" class="secondary" type="button" hidden>まとめてコピー</button>
+    <button id="copyMemoBtn" class="secondary" type="button" hidden>メモをコピー</button>
+  </div>
+  <section class="card" id="foodCard">
+    <div class="list-head">
+      <div class="hint" style="margin:0;font-weight:700;color:var(--ink)">並び</div>
+      <select id="sortSel">
+        <option value="expiry">期限が近い順</option>
+        <option value="added">購入が古い順</option>
+        <option value="name">名前順</option>
+      </select>
+    </div>
+    <div id="list"></div>
+    <div class="actions" style="margin:12px 0 0">
+      <button id="copyFoodBtn" class="secondary" type="button">食材をコピー</button>
+      <span></span>
+    </div>
+  </section>
+  <section class="card" id="planCard" hidden>
+    <div class="plan-head"><h2>献立</h2><div class="hint" id="weekLabel" style="margin:0"></div></div>
+    <div class="tabs" style="margin-top:10px">
+      <button class="tab on" id="tabThis" type="button">今週</button>
+      <button class="tab" id="tabNext" type="button">来週</button>
+    </div>
+    <div id="week"></div>
+    <div class="actions" style="margin:12px 0 0">
+      <button id="copyWeekBtn" class="secondary" type="button">献立をコピー</button>
+      <span></span>
+    </div>
+  </section>
+  <section class="card" id="memoCard" hidden>
+    <form class="add-row" id="memoForm">
+      <input id="memoInput" type="text" placeholder="卵、味噌、キッチンペーパー" autocomplete="off" />
+      <button type="submit">足す</button>
+    </form>
+    <div id="memoList"></div>
+  </section>
+  <dialog id="formDialog">
+    <form class="dialog-body" id="itemForm">
+      <div class="hint" id="formTitle" style="margin:0 0 8px;font-weight:700;color:var(--ink)">食材を追加</div>
+      <label for="name">名前</label>
+      <input id="name" required placeholder="例：納豆" autocomplete="off" />
+      <div class="row">
+        <div><label for="qty">数量</label><input id="qty" type="number" inputmode="decimal" min="0" step="any" placeholder="2" /></div>
+        <div>
+          <label for="unit">単位</label>
+          <select id="unit">
+            <option>個</option><option>本</option><option>袋</option><option>パック</option>
+            <option>枚</option><option>切れ</option><option>g</option><option>kg</option>
+            <option>ml</option><option>L</option><option>適量</option>
+          </select>
+        </div>
+      </div>
+      <label for="expiry">期限（任意）</label>
+      <input id="expiry" type="date" />
+      <label class="toggle plain"><input id="unknown" type="checkbox" />わからない</label>
+      <label class="toggle"><input id="frozen" type="checkbox" />冷凍</label>
+      <p class="hint">チェックなしは冷蔵です。保存した日は自動で残します。</p>
+      <div class="actions" style="margin:16px 0 0">
+        <button type="submit">保存</button>
+        <button id="cancelBtn" class="secondary" type="button">やめる</button>
+      </div>
+      <div id="deleteWrap" hidden>
+        <button id="deleteBtn" class="danger" type="button" style="width:100%;margin-top:8px">この食材を消す</button>
+      </div>
+    </form>
+  </dialog>
+  <div class="toast-wrap" id="toast"><span id="toastText"></span><button id="undoBtn" type="button">戻す</button></div>
+  <script>
+    const KEY="shokuzai-memo-v3";
+    const $=id=>document.getElementById(id);
+    const YOU=["日","月","火","水","木","金","土"];
+    const COUNT_UNITS=["個","本","袋","パック","枚","切れ"];
+    const HALF_UNITS=["個","本","袋","パック","枚","切れ","g","kg","ml","L"];
+    let editingId=null,undo=null,toastTimer=null,weekOffset=0;
+    const todayStr=(d=new Date())=>{ const z=n=>String(n).padStart(2,"0"); return `${d.getFullYear()}-${z(d.getMonth()+1)}-${z(d.getDate())}`; };
+    const mondayStr=(d=new Date())=>{ const x=new Date(d.getFullYear(),d.getMonth(),d.getDate()); const day=x.getDay(); x.setDate(x.getDate()+(day===0?-6:1-day)); return todayStr(x); };
+    const addDays=(iso,n)=>{ const d=new Date(iso+"T00:00:00"); d.setDate(d.getDate()+n); return todayStr(d); };
+    const daysBetween=(from,to=todayStr())=>Math.round((new Date(to+"T00:00:00")-new Date(from+"T00:00:00"))/86400000);
+    const emptyMeals=start=>{ const meals={}; for(let i=0;i<7;i++) meals[addDays(start,i)]={lunch:"",dinner:""}; return meals; };
+    const currentStart=()=>addDays(mondayStr(),weekOffset*7);
+    const shortRange=start=>start.slice(5).replace("-","/")+"〜"+addDays(start,6).slice(5).replace("-","/");
+    const niceNum=n=>{ const x=Math.round(n*1000)/1000; return Number.isInteger(x)?x:parseFloat(x.toFixed(2)); };
+    const hasQty=item=>item.qty!==""&&item.qty!=null&&!Number.isNaN(Number(item.qty));
+    function load(){
+      try{
+        const raw=JSON.parse(localStorage.getItem(KEY))||JSON.parse(localStorage.getItem("shokuzai-memo-v2"))||JSON.parse(localStorage.getItem("shokuzai-memo-v1"))||{items:[]};
+        raw.items=Array.isArray(raw.items)?raw.items:[];
+        raw.weeks=raw.weeks||{}; raw.memo=Array.isArray(raw.memo)?raw.memo:[];
+        raw.sort=raw.sort||"expiry"; raw.pane=raw.pane||"food";
+        if(raw.frozenClosed==null) raw.frozenClosed=false;
+        if(raw.week&&raw.week.weekStart&&raw.week.meals&&!raw.weeks[raw.week.weekStart]) raw.weeks[raw.week.weekStart]=raw.week.meals;
+        const thisStart=mondayStr(), nextStart=addDays(thisStart,7);
+        Object.keys(raw.weeks).forEach(k=>{ if(k<thisStart) delete raw.weeks[k]; });
+        if(!raw.weeks[thisStart]) raw.weeks[thisStart]=emptyMeals(thisStart);
+        if(!raw.weeks[nextStart]) raw.weeks[nextStart]=emptyMeals(nextStart);
+        return raw;
+      }catch{
+        const thisStart=mondayStr();
+        return {items:[],memo:[],sort:"expiry",pane:"food",frozenClosed:false,weeks:{[thisStart]:emptyMeals(thisStart),[addDays(thisStart,7)]:emptyMeals(addDays(thisStart,7))}};
+      }
+    }
+    const save=d=>localStorage.setItem(KEY,JSON.stringify(d));
+    const snapshot=()=>{ const data=load(); undo={items:JSON.parse(JSON.stringify(data.items)),memo:JSON.parse(JSON.stringify(data.memo))}; };
+    const hasExpiry=i=>!i.unknown&&!!i.expiry;
+    const left=i=>hasExpiry(i)?daysBetween(todayStr(),i.expiry):null;
+    function statusOf(item){
+      if(!hasExpiry(item)) return {key:"none",text:"-"};
+      const d=left(item);
+      if(d<0) return {key:"expired",text:`${Math.abs(d)}日過ぎ`};
+      if(d===0) return {key:"d3",text:"今日まで"};
+      if(d<=3) return {key:"d3",text:"あと"+d+"日"};
+      if(d<=7) return {key:"d7",text:"あと"+d+"日"};
+      return {key:"ok",text:"あと"+d+"日"};
+    }
+    const addedText=item=>{ if(!item.addedAt) return ""; const n=daysBetween(item.addedAt,todayStr()); return n<=0?"今日から":n+"日前から"; };
+    const qtyText=i=>(i.qty===""||i.qty==null)?(i.unit||""):`${i.qty}${i.unit||""}`;
+    const esc=s=>String(s).replace(/[&<>"']/g,c=>({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[c]));
+    function showToast(msg,canUndo){
+      $("toastText").textContent=msg;
+      $("undoBtn").style.display=canUndo?"inline-block":"none";
+      $("toast").classList.add("show");
+      clearTimeout(toastTimer);
+      toastTimer=setTimeout(()=>{ $("toast").classList.remove("show"); if(!canUndo) undo=null; }, canUndo?5000:1600);
+    }
+    function cmp(a,b,sort){
+      if(sort==="name") return a.name.localeCompare(b.name,"ja");
+      if(sort==="added") return (a.addedAt||"9999")<(b.addedAt||"9999")?-1:(a.addedAt||"9999")>(b.addedAt||"9999")?1:a.name.localeCompare(b.name,"ja");
+      const ae=hasExpiry(a),be=hasExpiry(b);
+      if(ae&&be) return left(a)-left(b)||a.name.localeCompare(b.name,"ja");
+      if(ae&&!be) return -1; if(!ae&&be) return 1;
+      return a.name.localeCompare(b.name,"ja");
+    }
+    function itemHtml(item){
+      const st=statusOf(item);
+      const canHalf=hasQty(item)&&HALF_UNITS.includes(item.unit);
+      const canDec=hasQty(item)&&COUNT_UNITS.includes(item.unit);
+      const extra=`${canHalf?`<button class="secondary small" type="button" data-half="${item.id}">半分</button>`:""}${canDec?`<button class="secondary small" type="button" data-dec="${item.id}">-1</button>`:""}`;
+      return `<div class="item"><div class="name">${esc(item.name)}</div><div class="meta ${st.key}">${esc(qtyText(item))} ・ ${st.text} ・ ${addedText(item)}</div><div class="item-btns">${extra}<button class="small" type="button" data-used="${item.id}">使い切った</button><button class="secondary small" type="button" data-edit="${item.id}">直す</button></div></div>`;
+    }
+    function applyPane(pane){
+      $("foodCard").hidden=pane!=="food"; $("planCard").hidden=pane!=="plan"; $("memoCard").hidden=pane!=="memo";
+      $("paneFood").classList.toggle("on",pane==="food");
+      $("panePlan").classList.toggle("on",pane==="plan");
+      $("paneMemo").classList.toggle("on",pane==="memo");
+      $("addBtn").hidden=pane!=="food"; $("copyAllBtn").hidden=pane!=="plan"; $("copyMemoBtn").hidden=pane!=="memo";
+    }
+    function render(){
+      const data=load();
+      applyPane(data.pane||"food");
+      $("sortSel").value=data.sort||"expiry";
+      const fridge=data.items.filter(x=>!x.frozen).sort((a,b)=>cmp(a,b,data.sort));
+      const frozen=data.items.filter(x=>x.frozen).sort((a,b)=>cmp(a,b,data.sort));
+      $("count").textContent=data.items.length?`${data.items.length}品`:"";
+      if(!data.items.length) $("list").innerHTML=`<div class="empty">まだ食材がありません</div>`;
+      else {
+        let html="";
+        if(fridge.length) html+=`<div class="sec fridge"><div class="sec-title">冷蔵 ${fridge.length}</div>${fridge.map(itemHtml).join("")}</div>`;
+        if(frozen.length){
+          html+=`<div class="sec freezer"><div class="sec-title"><span>冷凍 ${frozen.length}</span><button type="button" data-toggle-frozen="1">${data.frozenClosed?"開く ▸":"畳む ▾"}</button></div>`;
+          if(!data.frozenClosed) html+=frozen.map(itemHtml).join("");
+          html+=`</div>`;
+        }
+        $("list").innerHTML=html;
+      }
+      const start=currentStart(), meals=data.weeks[start]||emptyMeals(start), now=todayStr();
+      $("weekLabel").textContent=shortRange(start);
+      $("tabThis").classList.toggle("on",weekOffset===0);
+      $("tabNext").classList.toggle("on",weekOffset===1);
+      $("week").innerHTML=Array.from({length:7},(_,i)=>{
+        const iso=addDays(start,i), d=new Date(iso+"T00:00:00");
+        const meal=meals[iso]||{lunch:"",dinner:""};
+        const isToday=weekOffset===0&&iso===now;
+        return `<div class="week-day${isToday?" today":""}"><div class="week-head">${YOU[d.getDay()]}曜 ${iso.slice(5).replace("-","/")}${isToday?"<span>今日</span>":""}</div><div class="meal-label">昼</div><textarea data-meal="${iso}-lunch" rows="1">${esc(meal.lunch)}</textarea><div class="meal-label">夜</div><textarea data-meal="${iso}-dinner" rows="1">${esc(meal.dinner)}</textarea></div>`;
+      }).join("");
+      const memo=[...data.memo].sort((a,b)=>Number(a.done)-Number(b.done));
+      $("memoList").innerHTML=memo.length?memo.map(m=>`<div class="memo-item${m.done?" done":""}"><input type="checkbox" data-memo-done="${m.id}" ${m.done?"checked":""} /><div class="memo-text">${esc(m.text)}</div><button class="danger small" type="button" data-memo-del="${m.id}">消す</button></div>`).join(""):`<div class="empty">買い物メモはまだないよ</div>`;
+    }
+    function openForm(item){
+      editingId=item&&item.id?item.id:null;
+      $("formTitle").textContent=editingId?"食材を直す":"食材を追加";
+      $("name").value=item?item.name:"";
+      $("qty").value=item&&item.qty!=null?item.qty:"";
+      $("unit").value=item&&item.unit?item.unit:"個";
+      $("expiry").value=item&&item.expiry?item.expiry:"";
+      $("unknown").checked=!!(item&&item.unknown);
+      $("frozen").checked=!!(item&&item.frozen);
+      $("expiry").disabled=$("unknown").checked;
+      $("deleteWrap").hidden=!editingId;
+      $("formDialog").showModal();
+      setTimeout(()=>$("name").focus(),50);
+    }
+    function setPane(pane){ const data=load(); data.pane=pane; save(data); render(); }
+    function removeItem(id,msg){ snapshot(); const data=load(); data.items=data.items.filter(x=>x.id!==id); save(data); render(); showToast(msg,true); }
+    function changeQty(id,next,msg){
+      snapshot(); const data=load();
+      if(next<=0){ data.items=data.items.filter(x=>x.id!==id); save(data); render(); showToast("使い切ったね",true); return; }
+      data.items=data.items.map(x=>x.id===id?{...x,qty:niceNum(next)}:x); save(data); render(); showToast(msg,true);
+    }
+    $("unknown").onchange=()=>{ $("expiry").disabled=$("unknown").checked; if($("unknown").checked) $("expiry").value=""; };
+    $("addBtn").onclick=()=>openForm(null);
+    $("cancelBtn").onclick=()=>$("formDialog").close();
+    $("paneFood").onclick=()=>setPane("food");
+    $("panePlan").onclick=()=>setPane("plan");
+    $("paneMemo").onclick=()=>setPane("memo");
+    $("tabThis").onclick=()=>{ weekOffset=0; render(); };
+    $("tabNext").onclick=()=>{ weekOffset=1; render(); };
+    $("sortSel").onchange=()=>{ const data=load(); data.sort=$("sortSel").value; save(data); render(); };
+    $("itemForm").onsubmit=e=>{
+      e.preventDefault();
+      const data=load(), prev=data.items.find(x=>x.id===editingId);
+      const item={
+        id:editingId||String(Date.now()), name:$("name").value.trim(),
+        qty:$("qty").value===""?"":Number($("qty").value), unit:$("unit").value,
+        expiry:$("unknown").checked?"":$("expiry").value,
+        unknown:$("unknown").checked||!$("expiry").value,
+        frozen:$("frozen").checked, addedAt:prev&&prev.addedAt?prev.addedAt:todayStr()
+      };
+      if(!item.name) return;
+      if(editingId) data.items=data.items.map(x=>x.id===editingId?item:x); else data.items.push(item);
+      save(data); $("formDialog").close(); render(); showToast(editingId?"直したよ":"追加したよ",false);
+    };
+    $("deleteBtn").onclick=()=>{ if(!editingId) return; $("formDialog").close(); removeItem(editingId,"消したよ"); };
+    $("list").onclick=e=>{
+      const t=e.target;
+      if(t.getAttribute("data-toggle-frozen")){ const data=load(); data.frozenClosed=!data.frozenClosed; save(data); render(); return; }
+      const data=load();
+      const used=t.getAttribute("data-used"), edit=t.getAttribute("data-edit"), half=t.getAttribute("data-half"), dec=t.getAttribute("data-dec");
+      if(used) removeItem(used,"使い切ったね");
+      if(edit) openForm(data.items.find(x=>x.id===edit));
+      if(half){ const item=data.items.find(x=>x.id===half); if(item&&hasQty(item)) changeQty(half,Number(item.qty)/2,"半分にしたよ"); }
+      if(dec){ const item=data.items.find(x=>x.id===dec); if(item&&hasQty(item)) changeQty(dec,Number(item.qty)-1,"1つ減らしたよ"); }
+    };
+    $("memoForm").onsubmit=e=>{
+      e.preventDefault();
+      const text=$("memoInput").value.trim(); if(!text) return;
+      const data=load(); data.memo.push({id:String(Date.now()),text,done:false}); save(data);
+      $("memoInput").value=""; render(); $("memoInput").focus();
+    };
+    $("memoList").onclick=e=>{
+      const t=e.target, doneId=t.getAttribute("data-memo-done"), delId=t.getAttribute("data-memo-del"), data=load();
+      if(doneId){ data.memo=data.memo.map(m=>m.id===doneId?{...m,done:t.checked}:m); save(data); render(); }
+      if(delId){ snapshot(); data.memo=data.memo.filter(m=>m.id!==delId); save(data); render(); showToast("メモを消したよ",true); }
+    };
+    $("week").addEventListener("input",e=>{
+      const key=e.target.getAttribute("data-meal"); if(!key) return;
+      const [iso,part]=key.split("-"), data=load(), start=currentStart();
+      if(!data.weeks[start]) data.weeks[start]=emptyMeals(start);
+      if(!data.weeks[start][iso]) data.weeks[start][iso]={lunch:"",dinner:""};
+      data.weeks[start][iso][part]=e.target.value; save(data);
+    });
+    $("undoBtn").onclick=()=>{
+      if(!undo) return;
+      const data=load();
+      if(undo.items) data.items=undo.items;
+      if(undo.memo) data.memo=undo.memo;
+      save(data); undo=null;
+      $("toast").classList.remove("show"); render(); showToast("戻したよ",false);
+    };
+    const copyText=(text,ok)=>navigator.clipboard.writeText(text).then(()=>showToast(ok,false)).catch(()=>prompt("下を選んでコピーしてね",text));
+    function foodText(data){
+      if(!data.items.length) return "";
+      const fmt=i=>`- ${i.name} ${qtyText(i)} / ${hasExpiry(i)?i.expiry+"（"+statusOf(i).text+"）":"-"} / ${addedText(i)}`;
+      const block=(title,list)=>list.length?["■ "+title].concat(list.sort((a,b)=>cmp(a,b,data.sort)).map(fmt)).concat([""]):[];
+      return ["【食材メモ】"+todayStr(),""].concat(block("冷蔵",data.items.filter(x=>!x.frozen))).concat(block("冷凍",data.items.filter(x=>x.frozen))).join("\n").trim();
+    }
+    function weekText(offset){
+      const keep=weekOffset; weekOffset=offset;
+      const data=load(), start=currentStart(), meals=data.weeks[start]||emptyMeals(start);
+      const title=offset===0?"今週":"来週";
+      const lines=[`【${title}の献立】`+shortRange(start),""];
+      for(let i=0;i<7;i++){
+        const iso=addDays(start,i), d=new Date(iso+"T00:00:00"), meal=meals[iso]||{lunch:"",dinner:""};
+        lines.push(`${YOU[d.getDay()]}曜 ${iso.slice(5).replace("-","/")}`);
+        lines.push("昼："+(meal.lunch.trim()?meal.lunch:"未定"));
+        lines.push("夜："+(meal.dinner.trim()?meal.dinner:"未定"));
+        lines.push("");
+      }
+      weekOffset=keep; return lines.join("\n").trim();
+    }
+    function memoText(data){
+      if(!data.memo.length) return "";
+      const open=data.memo.filter(m=>!m.done), done=data.memo.filter(m=>m.done), lines=["【買い物メモ】"];
+      if(open.length){ lines.push("■ まだ"); open.forEach(m=>lines.push("- "+m.text)); }
+      if(done.length){ lines.push("■ 買えた"); done.forEach(m=>lines.push("- "+m.text)); }
+      return lines.join("\n");
+    }
+    $("copyFoodBtn").onclick=()=>{
+      const data=load(); if(!data.items.length){ showToast("まだ食材がないよ",false); return; }
+      copyText(foodText(data),"食材をコピーしたよ");
+    };
+    $("copyWeekBtn").onclick=()=>copyText(weekText(weekOffset),(weekOffset===0?"今週":"来週")+"の献立をコピーしたよ");
+    $("copyAllBtn").onclick=()=>{
+      const data=load(), parts=[];
+      const food=foodText(data), memo=memoText(data);
+      if(food) parts.push(food);
+      parts.push(weekText(0), weekText(1));
+      if(memo) parts.push(memo);
+      copyText(parts.join("\n\n"),"まとめてコピーしたよ");
+    };
+    $("copyMemoBtn").onclick=()=>{
+      const data=load(), text=memoText(data);
+      if(!text){ showToast("まだメモがないよ",false); return; }
+      copyText(text,"メモをコピーしたよ");
+    };
+    render();
+  </script>
+</body>
+</html>
